@@ -1,0 +1,9 @@
+.directory
+.pio
+.continue
+.vscode
+doc/
+docs/
+logs/
+test/
+TODO.md

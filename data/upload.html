@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>emfao LED Controller - Firmware Update</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔄 Firmware Update</h1>
+            <p>Update your LED Controller firmware safely</p>
+        </div>
+        
+        <div class="section">
+            <div class="file-input-wrapper">
+                <input type="file" id="firmwareFile" class="file-input" accept=".bin">
+                <button class="file-input-button">
+                    📁 Choose Firmware File (.bin)
+                </button>
+            </div>
+            <div id="fileName" class="file-name" style="display: none;"></div>
+            <button id="uploadBtn" class="upload-button" disabled>
+                ⬆️ Upload Firmware
+            </button>
+        </div>
+    </div>
+    <script src="/js/upload.js"></script>
+</body>
+</html>

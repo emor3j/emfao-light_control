@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>emfao LED Controller - Configuration</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚙️ System Configuration</h1>
+            <p>Configure your emfao LED Controller</p>
+        </div>
+        
+        <div class="section">
+            <h2>📶 WiFi Configuration</h2>
+            
+            <div id="wifi-status" class="status-box">
+                <p>Loading WiFi status...</p>
+            </div>
+            
+            <form id="wifi-form">
+                <div class="form-group">
+                    <label for="ssid-select">Network:</label>
+                    <select id="ssid-select">
+                        <option value="">Select a network...</option>
+                        <option value="manual">--- Enter manually ---</option>
+                    </select>
+                    <button type="button" id="scan-btn">🔄 Scan</button>
+                </div>
+                
+                <div class="form-group" id="manual-ssid-group" style="display:none;">
+                    <label for="manual-ssid">SSID:</label>
+                    <input type="text" id="manual-ssid" placeholder="Enter network name">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" placeholder="Enter password" required>
+                </div>
+                
+                <button type="submit" id="save-btn">💾 Save & Reboot</button>
+            </form>
+            
+            <div id="wifi-message" class="message-box" style="display:none;"></div>
+        </div>
+        
+        <div class="section">
+            <p><a href='/'>🏠 Back to Home</a></p>
+        </div>
+    </div>
+    
+    <script src="/js/config.js"></script>
+</body>
+</html>

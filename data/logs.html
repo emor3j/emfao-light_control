@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>emfao LED Controller - System Logs</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📝 System Logs</h1>
+            <p>Real-time system messages and debug information</p>
+        </div>
+        
+        <!-- Status Information -->
+        <div class="status-info" id="statusInfo">
+            <div class="status-row">
+                <span><strong>Buffer Status:</strong></span>
+                <span id="bufferStatus">Loading...</span>
+            </div>
+            <div class="status-row">
+                <span><strong>Last Update:</strong></span>
+                <span id="lastUpdate">Never</span>
+            </div>
+            <div class="status-row">
+                <span><strong>Auto-refresh:</strong></span>
+                <span id="autoRefreshStatus">Disabled</span>
+            </div>
+        </div>
+        
+        <!-- Controls -->
+        <div class="controls">
+            <div class="control-group">
+                <button id="refreshBtn" class="btn">🔄 Refresh</button>
+                <button id="clearBtn" class="btn btn-danger">🗑️ Clear Logs</button>
+                <button id="downloadBtn" class="btn btn-success">💾 Download</button>
+                <button id="autoScrollBtn" class="btn">📜 Auto-scroll</button>
+            </div>
+            
+            <div class="control-group">
+                <label for="maxEntries">Show:</label>
+                <select id="maxEntries">
+                    <option value="50">Last 50</option>
+                    <option value="100" selected>Last 100</option>
+                    <option value="200">Last 200</option>
+                    <option value="0">All entries</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="autoRefresh">Auto-refresh:</label>
+                <select id="autoRefresh">
+                    <option value="0">Disabled</option>
+                    <option value="5">5 seconds</option>
+                    <option value="10" selected>10 seconds</option>
+                    <option value="30">30 seconds</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- Error Display -->
+        <div id="errorDisplay" class="error-message" style="display: none;">
+            <strong>Error:</strong> <span id="errorMessage"></span>
+        </div>
+        
+        <!-- Logs Container -->
+        <div class="logs-container" id="logsContainer">
+            <div class="loading">Loading logs...</div>
+        </div>
+        
+        <!-- Navigation -->
+        <div class="section">
+            <p><a href="/">🏠 Back to Index</a></p>
+        </div>
+    </div>
+
+    <script src="/js/logs_refresh.js"></script>
+    <script src="/js/logs_download.js"></script>
+</body>
+</html>

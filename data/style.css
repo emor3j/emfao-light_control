@@ -1,0 +1,490 @@
+* {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+body {
+	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	min-height: 100vh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 20px;
+}
+
+.container {
+	background: rgba(255, 255, 255, 0.95);
+	backdrop-filter: blur(10px);
+	border-radius: 20px;
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+	padding: 40px;
+	max-width: 1000px;
+	width: 100%;
+}
+
+.header {
+	text-align: center;
+	margin-bottom: 30px;
+}
+
+.header h1 {
+	color: #333;
+	font-size: 2.5em;
+	margin-bottom: 10px;
+}
+
+.header p {
+	color: #666;
+	font-size: 1.1em;
+}
+
+.section {
+	margin-bottom: 30px;
+}
+
+.file-input-wrapper {
+	position: relative;
+	display: inline-block;
+	width: 100%;
+	margin-bottom: 20px;
+}
+
+.file-input {
+	opacity: 0;
+	width: 100%;
+	height: 60px;
+	position: absolute;
+	cursor: pointer;
+}
+
+.file-input-button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	height: 60px;
+	background: linear-gradient(135deg, #667eea, #764ba2);
+	color: white;
+	border: none;
+	border-radius: 15px;
+	font-size: 1.1em;
+	font-weight: 600;
+	cursor: pointer;
+	transition: all 0.3s ease;
+}
+
+.file-input-button:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+}
+
+.file-name {
+	margin: 15px 0;
+	padding: 10px;
+	background: #f8f9fa;
+	border-radius: 8px;
+	font-family: 'Courier New', monospace;
+	color: #333;
+}
+
+.upload-button {
+	width: 100%;
+	height: 50px;
+	background: linear-gradient(135deg, #28a745, #20c997);
+	color: white;
+	border: none;
+	border-radius: 12px;
+	font-size: 1.1em;
+	font-weight: 600;
+	cursor: pointer;
+	transition: all 0.3s ease;
+}
+
+.upload-button:hover:not(:disabled) {
+	transform: translateY(-2px);
+	box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+}
+
+.upload-button:disabled {
+	background: #6c757d;
+	cursor: not-allowed;
+	transform: none;
+	box-shadow: none;
+}
+
+.progress-section {
+	margin: 20px 0;
+	display: none;
+}
+
+.progress-bar {
+	width: 100%;
+	height: 20px;
+	background: #e9ecef;
+	border-radius: 10px;
+	overflow: hidden;
+	margin: 10px 0;
+}
+
+.progress-fill {
+	height: 100%;
+	background: linear-gradient(90deg, #28a745, #20c997);
+	width: 0%;
+	transition: width 0.3s ease;
+	border-radius: 10px;
+}
+
+.progress-text {
+	text-align: center;
+	font-weight: 600;
+	color: #333;
+	margin: 10px 0;
+}
+
+.status-section {
+	margin-top: 20px;
+}
+
+.status-message {
+	padding: 15px;
+	border-radius: 10px;
+	margin: 10px 0;
+	font-weight: 500;
+	display: none;
+}
+
+.status-info {
+	background: #d1ecf1;
+	color: #0c5460;
+	border: 1px solid #bee5eb;
+}
+
+.status-success {
+	background: #d4edda;
+	color: #155724;
+	border: 1px solid #c3e6cb;
+}
+
+.status-warning {
+	background: #fff3cd;
+	color: #856404;
+	border: 1px solid #ffeaa7;
+}
+
+.status-error {
+	background: #f8d7da;
+	color: #721c24;
+	border: 1px solid #f1aeb5;
+}
+
+.system-info {
+	background: #f8f9fa;
+	border-radius: 10px;
+	padding: 20px;
+	margin-top: 20px;
+	font-size: 0.9em;
+}
+
+.system-info h3 {
+	color: #333;
+	margin-bottom: 15px;
+	font-size: 1.1em;
+}
+
+.info-row {
+	display: flex;
+	justify-content: space-between;
+	margin: 8px 0;
+	padding: 5px 0;
+	border-bottom: 1px solid #e9ecef;
+}
+
+.info-row:last-child {
+	border-bottom: none;
+}
+
+.info-label {
+	font-weight: 600;
+	color: #495057;
+}
+
+.info-value {
+	color: #6c757d;
+	font-family: 'Courier New', monospace;
+}
+
+@media (max-width: 768px) {
+	.container {
+		padding: 20px;
+		margin: 10px;
+	}
+	
+	.header h1 {
+		font-size: 2em;
+	}
+	
+	.info-row {
+		flex-direction: column;
+		gap: 5px;
+	}
+
+	.controls {
+		flex-direction: column;
+		align-items: stretch;
+	}
+	
+	.control-group {
+		justify-content: space-between;
+	}
+	
+	.logs-container {
+		max-height: 60vh;
+	}
+}
+
+.logs-container {
+	background: #1a1a1a;
+	border: 1px solid #333;
+	border-radius: 8px;
+	padding: 20px;
+	margin: 20px 0;
+	font-family: 'Courier New', monospace;
+	max-height: 70vh;
+	overflow-y: auto;
+}
+
+.log-entry {
+	margin: 2px 0;
+	padding: 4px 8px;
+	border-radius: 4px;
+	white-space: pre-wrap;
+	word-wrap: break-word;
+	line-height: 1.4;
+}
+
+.log-entry:hover {
+	background: #2a2a2a;
+}
+
+.log-timestamp {
+	color: #888;
+	font-size: 0.85em;
+	margin-right: 10px;
+}
+
+.log-message {
+	color: #e0e0e0;
+}
+
+.log-level-DEBUG { border-left: 3px solid #6c757d; }
+.log-level-INFO { border-left: 3px solid #17a2b8; }
+.log-level-WARNING { border-left: 3px solid #ffc107; }
+.log-level-ERROR { border-left: 3px solid #dc3545; }
+
+.controls {
+	display: flex;
+	gap: 10px;
+	margin-bottom: 20px;
+	flex-wrap: wrap;
+	align-items: center;
+}
+
+.control-group {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.btn {
+	background: #007bff;
+	color: white;
+	border: none;
+	padding: 8px 16px;
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 14px;
+	transition: background-color 0.2s;
+}
+
+.btn:hover {
+	background: #0056b3;
+}
+
+.btn.btn-danger {
+	background: #dc3545;
+}
+
+.btn.btn-danger:hover {
+	background: #c82333;
+}
+
+.btn.btn-success {
+	background: #28a745;
+}
+
+.btn.btn-success:hover {
+	background: #1e7e34;
+}
+
+.status-info {
+	background: #f8f9fa;
+	border: 1px solid #dee2e6;
+	border-radius: 6px;
+	padding: 12px;
+	margin-bottom: 20px;
+	font-size: 14px;
+}
+
+.status-row {
+	display: flex;
+	justify-content: space-between;
+	margin: 4px 0;
+}
+
+.loading {
+	text-align: center;
+	color: #666;
+	padding: 40px;
+}
+
+.error-message {
+	background: #f8d7da;
+	color: #721c24;
+	border: 1px solid #f5c6cb;
+	border-radius: 4px;
+	padding: 12px;
+	margin: 20px 0;
+}
+
+select {
+	padding: 6px;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	font-size: 14px;
+}
+
+.auto-scroll-enabled {
+	background: #28a745 !important;
+}
+
+.btn.btn-success {
+    background: #28a745;
+}
+
+.btn.btn-success:hover {
+    background: #1e7e34;
+}
+
+/* Style pour le bouton de téléchargement en cours */
+.btn.btn-downloading {
+    background: #6c757d;
+    cursor: not-allowed;
+}
+
+/* Styles pour le niveau de log */
+.log-level {
+    color: #ffc107;
+    font-size: 0.85em;
+    font-weight: bold;
+    margin-right: 10px;
+    min-width: 50px;
+    display: inline-block;
+}
+
+/* Couleurs spécifiques par niveau */
+.log-level-DEBUG .log-level { color: #6c757d; }
+.log-level-INFO .log-level { color: #17a2b8; }
+.log-level-WARNING .log-level { color: #ffc107; }
+.log-level-ERROR .log-level { color: #dc3545; }
+
+/* Status boxes */
+.status-box {
+    padding: 15px;
+    border-radius: 5px;
+    margin: 10px 0;
+    border: 1px solid #ddd;
+}
+
+.status-success {
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+    color: #155724;
+}
+
+.status-error {
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+    color: #721c24;
+}
+
+/* Form styles */
+.form-group {
+    margin: 15px 0;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.form-group input, .form-group select {
+    width: 85%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+    box-sizing: border-box;
+}
+
+.form-group button {
+    margin-left: 10px;
+    padding: 10px 15px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.form-group button:hover {
+    background-color: #0056b3;
+}
+
+.form-group button:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+}
+
+/* Message boxes */
+.message-box {
+    padding: 10px;
+    border-radius: 4px;
+    margin: 10px 0;
+}
+
+.message-success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.message-error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.message-warning {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.message-info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
