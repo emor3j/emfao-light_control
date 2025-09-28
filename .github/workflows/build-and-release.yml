@@ -1,0 +1,418 @@
+name: Build and Release Firmware
+
+on:
+  push:
+    tags:
+      - 'v*.*'  # Trigger on version tags like v1.0
+  workflow_dispatch:  # Allow manual trigger
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0)'
+        required: true
+        default: 'v1.0'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Cache pip packages
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          
+    - name: Install PlatformIO
+      run: |
+        python -m pip install --upgrade pip
+        pip install platformio
+        
+    - name: Install PlatformIO dependencies
+      run: pio pkg install
+      
+    - name: Build firmware
+      run: pio run --environment esp32dev
+      
+    - name: Build filesystem
+      run: pio run --target buildfs --environment esp32dev
+      
+    - name: Get version
+      id: version
+      run: |
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          VERSION="${{ github.event.inputs.version }}"
+        else
+          VERSION=${GITHUB_REF#refs/tags/}
+        fi
+        echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+        echo "Building version: ${VERSION}"
+        
+    - name: Create merged firmware
+      run: |
+        # Install esptool if not available
+        pip install esptool
+        
+        # Create release directory
+        mkdir -p release
+        
+        # Copy individual binaries
+        cp .pio/build/esp32dev/firmware.bin release/
+        cp .pio/build/esp32dev/littlefs.bin release/ || echo "No filesystem image found"
+        
+        # Get ESP32 boot files from PlatformIO
+        FRAMEWORK_DIR=$(pio system info | grep "PlatformIO Core" -A 20 | grep "esp32" | head -1 | awk '{print $2}')
+        if [ -z "$FRAMEWORK_DIR" ]; then
+          FRAMEWORK_DIR="~/.platformio/packages/framework-arduinoespressif32"
+        fi
+        
+        # Try to find bootloader and partition files
+        BOOTLOADER_FILE=""
+        PARTITIONS_FILE=""
+        BOOT_APP_FILE=""
+        
+        # Common locations for ESP32 bootloader
+        for path in \
+          "~/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/bin/bootloader_dio_40m.bin" \
+          "~/.platformio/packages/framework-arduinoespressif32/tools/sdk/bin/bootloader_dio_40m.bin" \
+          ".pio/build/esp32dev/bootloader.bin"; do
+          if [ -f "$path" ]; then
+            BOOTLOADER_FILE="$path"
+            break
+          fi
+        done
+        
+        # Find partition table
+        for path in \
+          ".pio/build/esp32dev/partitions.bin" \
+          "~/.platformio/packages/framework-arduinoespressif32/tools/partitions/default.bin"; do
+          if [ -f "$path" ]; then
+            PARTITIONS_FILE="$path"
+            break
+          fi
+        done
+        
+        # Find boot_app0
+        for path in \
+          "~/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/bin/boot_app0.bin" \
+          "~/.platformio/packages/framework-arduinoespressif32/tools/sdk/bin/boot_app0.bin" \
+          ".pio/build/esp32dev/boot_app0.bin"; do
+          if [ -f "$path" ]; then
+            BOOT_APP_FILE="$path"
+            break
+          fi
+        done
+        
+        # Create individual files for advanced users
+        if [ -f "$BOOTLOADER_FILE" ]; then
+          cp "$BOOTLOADER_FILE" release/bootloader.bin
+        fi
+        if [ -f "$PARTITIONS_FILE" ]; then
+          cp "$PARTITIONS_FILE" release/partitions.bin  
+        fi
+        if [ -f "$BOOT_APP_FILE" ]; then
+          cp "$BOOT_APP_FILE" release/boot_app0.bin
+        fi
+        
+        # Create merged binary with all components
+        echo "Creating merged firmware binary..."
+        
+        MERGE_CMD="esptool.py --chip esp32 merge_bin -o release/emfao-light-control-${{ steps.version.outputs.VERSION }}-merged.bin --flash_mode dio --flash_freq 40m --flash_size 4MB"
+        
+        # Add bootloader if found
+        if [ -f "$BOOTLOADER_FILE" ]; then
+          MERGE_CMD="$MERGE_CMD 0x1000 $BOOTLOADER_FILE"
+        fi
+        
+        # Add partition table if found  
+        if [ -f "$PARTITIONS_FILE" ]; then
+          MERGE_CMD="$MERGE_CMD 0x8000 $PARTITIONS_FILE"
+        fi
+        
+        # Add boot_app0 if found
+        if [ -f "$BOOT_APP_FILE" ]; then
+          MERGE_CMD="$MERGE_CMD 0xe000 $BOOT_APP_FILE"  
+        fi
+        
+        # Add main firmware
+        MERGE_CMD="$MERGE_CMD 0x10000 .pio/build/esp32dev/firmware.bin"
+        
+        # Add filesystem if exists
+        if [ -f ".pio/build/esp32dev/littlefs.bin" ]; then
+          # LittleFS typically goes at a high address, we'll use a common default
+          MERGE_CMD="$MERGE_CMD 0x290000 .pio/build/esp32dev/littlefs.bin"
+        fi
+        
+        # Execute merge command
+        eval $MERGE_CMD
+        
+        # Verify the merged binary was created
+        if [ -f "release/emfao-light-control-${{ steps.version.outputs.VERSION }}-merged.bin" ]; then
+          echo "✅ Merged firmware created successfully"
+          ls -la release/emfao-light-control-${{ steps.version.outputs.VERSION }}-merged.bin
+        else
+          echo "❌ Failed to create merged firmware"
+          exit 1
+        fi
+        
+    - name: Create flash scripts
+      run: |
+        # Create Windows batch script
+        cat > release/flash-windows.bat << 'EOF'
+        @echo off
+        echo EMFAO Light Control - ESP32 Flash Tool
+        echo =====================================
+        echo.
+        echo Make sure your ESP32 is connected via USB and in download mode:
+        echo 1. Hold BOOT button
+        echo 2. Press and release RESET button  
+        echo 3. Release BOOT button
+        echo.
+        pause
+        
+        echo Detecting COM port...
+        for /f "tokens=*" %%i in ('python -m serial.tools.list_ports -q') do set COMPORT=%%i
+        if "%COMPORT%"=="" (
+            echo No COM port detected. Please check your ESP32 connection.
+            pause
+            exit /b 1
+        )
+        
+        echo Using COM port: %COMPORT%
+        echo.
+        echo Flashing firmware...
+        python -m esptool --chip esp32 --port %COMPORT% --baud 460800 write_flash 0x0 emfao-light-control-${{ steps.version.outputs.VERSION }}-merged.bin
+        
+        if %ERRORLEVEL% EQU 0 (
+            echo.
+            echo ✅ Flashing completed successfully!
+            echo Your ESP32 will now reboot with the new firmware.
+        ) else (
+            echo.
+            echo ❌ Flashing failed. Please check your connection and try again.
+        )
+        
+        pause
+        EOF
+        
+        # Create Linux/Mac script
+        cat > release/flash-unix.sh << 'EOF'
+        #!/bin/bash
+        
+        echo "EMFAO Light Control - ESP32 Flash Tool"
+        echo "====================================="
+        echo
+        echo "Make sure your ESP32 is connected via USB and in download mode:"
+        echo "1. Hold BOOT button"
+        echo "2. Press and release RESET button"
+        echo "3. Release BOOT button"
+        echo
+        read -p "Press Enter when ready..."
+        
+        # Try to detect the port
+        PORT=""
+        if [ -e /dev/ttyUSB0 ]; then
+            PORT="/dev/ttyUSB0"
+        elif [ -e /dev/ttyACM0 ]; then
+            PORT="/dev/ttyACM0" 
+        elif ls /dev/cu.usbserial* 1> /dev/null 2>&1; then
+            PORT=$(ls /dev/cu.usbserial* | head -1)
+        elif ls /dev/cu.SLAB_USBtoUART* 1> /dev/null 2>&1; then
+            PORT=$(ls /dev/cu.SLAB_USBtoUART* | head -1)
+        fi
+        
+        if [ -z "$PORT" ]; then
+            echo "Could not detect ESP32 port automatically."
+            read -p "Please enter the port manually (e.g., /dev/ttyUSB0): " PORT
+        fi
+        
+        echo "Using port: $PORT"
+        echo
+        echo "Flashing firmware..."
+        
+        python3 -m esptool --chip esp32 --port "$PORT" --baud 460800 write_flash 0x0 emfao-light-control-${{ steps.version.outputs.VERSION }}-merged.bin
+        
+        if [ $? -eq 0 ]; then
+            echo
+            echo "✅ Flashing completed successfully!"
+            echo "Your ESP32 will now reboot with the new firmware."
+        else
+            echo
+            echo "❌ Flashing failed. Please check your connection and try again."
+        fi
+        
+        read -p "Press Enter to exit..."
+        EOF
+        
+        chmod +x release/flash-unix.sh
+        
+    - name: Create documentation
+      run: |
+        cat > release/FLASH_INSTRUCTIONS.md << 'EOF'
+        # EMFAO Light Control - Flash Instructions
+        
+        ## Quick Start
+        
+        ### Option 1: Automatic Flash (Recommended)
+        
+        **Windows:**
+        1. Install Python: https://python.org/downloads/
+        2. Install esptool: `pip install esptool`
+        3. Connect your ESP32 via USB
+        4. Double-click `flash-windows.bat`
+        5. Follow the on-screen instructions
+        
+        **Linux/macOS:**
+        1. Install Python: `sudo apt install python3-pip` (Ubuntu) or `brew install python3` (macOS)
+        2. Install esptool: `pip3 install esptool`
+        3. Connect your ESP32 via USB
+        4. Run: `./flash-unix.sh`
+        5. Follow the on-screen instructions
+        
+        ### Option 2: Manual Flash
+        
+        If the automatic scripts don't work, use this manual command:
+        
+        ```bash
+        esptool.py --chip esp32 --port [YOUR_PORT] --baud 460800 write_flash 0x0 emfao-light-control-${{ steps.version.outputs.VERSION }}-merged.bin
+        ```
+        
+        Replace `[YOUR_PORT]` with:
+        - **Windows**: `COM3`, `COM4`, etc.
+        - **Linux**: `/dev/ttyUSB0`, `/dev/ttyACM0`, etc.  
+        - **macOS**: `/dev/cu.usbserial-*` or `/dev/cu.SLAB_USBtoUART`
+        
+        ## Putting ESP32 in Download Mode
+        
+        1. **Hold** the BOOT button (sometimes labeled FLASH)
+        2. **Press and release** the RESET button (sometimes labeled EN)
+        3. **Release** the BOOT button
+        4. The ESP32 is now ready for flashing
+        
+        ## After Flashing
+        
+        1. **Press the RESET button** or unplug/replug the USB cable
+        2. **Connect to WiFi**: Look for "emfao-LedControler" access point (password=12345678)
+        3. **Configure**: Go to http://192.168.4.1 to set up your WiFi
+        4. **Access**: Once connected, find the ESP32's IP and access the web interface
+        
+        ## Troubleshooting
+        
+        **"Failed to connect":**
+        - Check USB cable (needs data, not just power)
+        - Try different USB port
+        - Make sure ESP32 is in download mode
+        - Check if drivers are installed (CP210x or CH340 drivers)
+        
+        **"Permission denied" (Linux/macOS):**
+        ```bash
+        sudo usermod -a -G dialout $USER
+        # Then logout and login again
+        ```
+        
+        **Still not working?**
+        - Try lower baud rate: change `460800` to `115200` in commands
+        - Use ESP32 Flash Download Tool: https://www.espressif.com/en/support/download/other-tools
+        
+        ## Hardware Requirements
+        
+        - ESP32 development board
+        - PCA9685 PWM driver module(s)
+        - LEDs connected to PCA9685 outputs
+        - I2C connections (SDA/SCL) between ESP32 and PCA9685
+        
+        ## Default Configuration
+        
+        - **I2C SDA**: GPIO 21
+        - **I2C SCL**: GPIO 22
+        - **Web Interface**: http://[ESP32_IP]/
+        - **Default AP**: EMFAO-Config (no password)
+        
+        ---
+        
+        For support and documentation: https://github.com/emor3j/emfao-light_control
+        EOF
+        
+    - name: Create release package
+      run: |
+        cd release
+        
+        # Create version info file
+        cat > VERSION.txt << EOF
+        EMFAO Light Control Firmware
+        Version: ${{ steps.version.outputs.VERSION }}
+        Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+        Git Commit: ${{ github.sha }}
+        
+        Components:
+        - ESP32 firmware with LED animation programs
+        - Web interface for configuration
+        - WiFi setup and OTA updates
+        - PCA9685 PWM driver support
+        EOF
+        
+        # List all files
+        echo "📦 Release package contents:"
+        ls -la
+        
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: emfao-light-control-${{ steps.version.outputs.VERSION }}
+        path: release/
+        retention-days: 30
+        
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+      with:
+        tag_name: ${{ steps.version.outputs.VERSION }}
+        name: EMFAO Light Control ${{ steps.version.outputs.VERSION }}
+        body: |
+          ## 🚀 EMFAO Light Control ${{ steps.version.outputs.VERSION }}
+          
+          ESP32 LED controller with animated lighting programs for model railways.
+          
+          ### 📦 What's included:
+          - **emfao-light-control-${{ steps.version.outputs.VERSION }}-merged.bin** - Complete firmware (flash this!)
+          - **flash-windows.bat** - Windows flash script
+          - **flash-unix.sh** - Linux/macOS flash script  
+          - **FLASH_INSTRUCTIONS.md** - Detailed flashing guide
+          - Individual binary files for advanced users
+          
+          ### ⚡ Quick Flash:
+          1. Download and extract the release
+          2. Connect ESP32 via USB
+          3. Run the flash script for your OS
+          4. Follow the instructions
+          
+          ### 🎯 Features in this release:
+          - 8 LED animation programs
+          - Web-based configuration interface
+          - WiFi setup with captive portal
+          - OTA firmware updates
+          - Multi-PCA9685 support
+          - Persistent configuration storage
+          
+          ### 📖 Full instructions: 
+          See `FLASH_INSTRUCTIONS.md` in the download
+          
+          ---
+          
+          **Build Info:**
+          - Commit: ${{ github.sha }}
+          - Built: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+        files: |
+          release/*
+        draft: false
+        prerelease: false
+        token: ${{ secrets.GITHUB_TOKEN }}
