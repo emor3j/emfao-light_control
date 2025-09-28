@@ -18,7 +18,27 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-
+    
+    - name: Install Doxygen
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y doxygen graphviz
+    
+    - name: Create Doxyfile if not exists
+      run: |
+        if [ ! -f Doxyfile ]; then
+          doxygen -g
+          # Configure Doxyfile for your project
+          sed -i 's/PROJECT_NAME           = "My Project"/PROJECT_NAME           = "EMFAO Light Control"/' Doxyfile
+          sed -i 's/PROJECT_VERSION        =/PROJECT_VERSION        = "1.0"/' Doxyfile
+          sed -i 's/INPUT                  =/INPUT                  = ./' Doxyfile
+          sed -i 's/RECURSIVE              = NO/RECURSIVE              = YES/' Doxyfile
+          sed -i 's/EXTRACT_ALL            = NO/EXTRACT_ALL            = YES/' Doxyfile
+          sed -i 's/GENERATE_LATEX         = YES/GENERATE_LATEX         = NO/' Doxyfile
+          sed -i 's/HTML_OUTPUT            = html/HTML_OUTPUT            = docs/' Doxyfile
+          sed -i 's/FILE_PATTERNS          =/FILE_PATTERNS          = *.cpp *.h/' Doxyfile
+        fi
+    
     - name: Generate Documentation
       run: doxygen
     
