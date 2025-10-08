@@ -519,23 +519,18 @@ void WebServer::handleUpdateLed(AsyncWebServerRequest *request, uint8_t *data, s
 		led_info->setName(doc["name"].as<String>());
 	}
 	
-	// Handle brightness updates (only when not program-controlled)
-	if (!doc["brightness"].isNull()) {
-		led_info->setBrightness(doc["brightness"]);
-		if (led_info->getProgramType() == PROGRAM_NONE) {
-			module_manager->applyLedBrightness(module, led);
-		}
-	}
-	
 	// Handle enable/disable state changes
 	if (!doc["enabled"].isNull()) {
 		led_info->setEnabled(doc["enabled"]);
 		if (!led_info->isEnabled()) {
 			led_info->setBrightness(0);
 			module_manager->applyLedBrightness(module, led);
+		} else {
+			// Restore brightness
+			module_manager->applyLedBrightness(module, led);
 		}
 	}
-	
+
 	// Handle program assignment changes
 	if (!doc["program_type"].isNull()) {
 		ProgramType new_program = (ProgramType)doc["program_type"].as<int>();
@@ -544,6 +539,14 @@ void WebServer::handleUpdateLed(AsyncWebServerRequest *request, uint8_t *data, s
 			program_manager->unassign_program(module, led);
 		} else {
 			program_manager->assign_program(module, led, new_program);
+		}
+	}
+
+	// Handle brightness updates (only when not program-controlled)
+	if (!doc["brightness"].isNull()) {
+		led_info->setBrightness(doc["brightness"]);
+		if (led_info->getProgramType() == PROGRAM_NONE && led_info->isEnabled()) {
+			module_manager->applyLedBrightness(module, led);
 		}
 	}
 	

@@ -6,4 +6,6 @@ doc/
 docs/
 logs/
 test/
+emfao-light_control.code-workspace
 TODO.md
+test-workflow.sh
